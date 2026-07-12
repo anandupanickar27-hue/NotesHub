@@ -7,8 +7,9 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib import messages
+from django.core.paginator import Paginator
 
-from notes.models import Note
+from notes.models import Category, Note
 from .forms import NoteForm
 
 def register(request):
@@ -53,13 +54,35 @@ def login_view(request):
 
 @login_required
 def home(request):
-    notes = Note.objects.filter(user=request.user)
 
-    return render(
-        request,
-        "notes/home.html",
-        {"notes": notes}
-    )
+    search = request.GET.get("search")
+
+    notes = Note.objects.filter(user=request.user).order_by("-is_pinned", "-created_at")
+
+    if search:
+        notes = notes.filter(title__icontains=search)
+
+    paginator = Paginator(notes, 5)
+
+    page_number = request.GET.get("page")
+
+    page_obj = paginator.get_page(page_number)
+
+    total_notes = Note.objects.filter(user=request.user).count()
+
+    pinned_notes = Note.objects.filter(
+        user=request.user,
+        is_pinned=True
+    ).count()
+
+    total_categories = Category.objects.count()
+
+    return render(request, "notes/home.html", {
+    "page_obj": page_obj,
+    "total_notes": total_notes,
+    "pinned_notes": pinned_notes,
+    "total_categories": total_categories,
+})
 
 
 def logout_view(request):
@@ -109,5 +132,16 @@ def delete_note(request, pk):
     if request.method == "POST":
         note.delete()
         messages.success(request, "Note deleted successfully.")
+
+    return redirect("home")
+
+@login_required
+def toggle_pin(request, pk):
+
+    note = Note.objects.get(pk=pk, user=request.user)
+
+    note.is_pinned = not note.is_pinned
+
+    note.save()
 
     return redirect("home")

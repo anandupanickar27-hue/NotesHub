@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
+{% extends "notes/base.html" %}
 
-<body>
+{% block content %}
     {% if messages %}
     {% for message in messages %}
         <div class="alert alert-info">
@@ -30,5 +25,4 @@
 </form>
 
 <p>Already have an account? <a href="{% url 'login' %}">Login</a></p>
-</body>
-</html>
+{% endblock %}
