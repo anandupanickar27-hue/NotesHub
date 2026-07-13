@@ -1,0 +1,495 @@
+{% extends "notes/base.html" %}
+
+{% block content %}
+
+<div class="workspace-header">
+
+    <span class="badge-title">
+        AI Powered Notes
+    </span>
+
+    <h1 class="section-title mt-3">
+        Create Your Knowledge
+    </h1>
+
+    <p class="text-muted mt-3">
+        Capture ideas, organize knowledge and chat with your notes.
+    </p>
+
+</div>
+
+<div class="row mb-5">
+
+    <div class="col-md-6 mb-3">
+
+        <div id="aiCard" class="mode-card mode-active">
+
+            <h3>🤖 AI Assistant</h3>
+
+            <p class="text-muted mt-3">
+                Let AI organize your thoughts automatically.
+            </p>
+
+            <ul class="small text-muted mt-3 mb-0">
+                <li>Generate a smart title</li>
+                <li>Create the best category</li>
+                <li>Write a concise summary</li>
+                <li>Suggest relevant tags</li>
+            </ul>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-6 mb-3">
+
+        <div id="manualCard" class="mode-card">
+
+            <h3>✍ Manual Note</h3>
+
+            <p class="text-muted mt-3">
+                Full control over your notes without AI assistance.
+            </p>
+
+            <ul class="small text-muted mt-3 mb-0">
+                <li>Write your own title</li>
+                <li>Choose your category</li>
+                <li>Quick note taking</li>
+                <li>No AI processing</li>
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+<input type="radio" id="aiMode" name="mode" hidden checked>
+<input type="radio" id="manualMode" name="mode" hidden>
+
+
+<!-- ================= AI SECTION ================= -->
+
+<div id="aiSection" class="card p-5 mb-5">
+
+    <div class="mb-4">
+
+        <label class="form-label fw-semibold">
+            Write your thoughts
+        </label>
+
+        <textarea
+            id="content"
+            class="form-control"
+            rows="8"
+            placeholder="Start writing..."></textarea>
+
+    </div>
+
+    <button
+        type="button"
+        class="btn btn-primary mb-4"
+        onclick="processAI()">
+
+        ✨ Analyze with AI
+
+    </button>
+
+    <div class="mb-3">
+
+        <label class="form-label fw-semibold">
+            Summary
+        </label>
+
+        <textarea
+            id="summary"
+            class="form-control"
+            rows="4"></textarea>
+
+    </div>
+
+    <div class="mb-3">
+
+        <label class="form-label fw-semibold">
+            Tags
+        </label>
+
+        <input
+            type="text"
+            id="tags"
+            class="form-control">
+
+    </div>
+
+    <div class="mb-3">
+
+        <label class="form-label fw-semibold">
+            Title
+        </label>
+
+        <input
+            type="text"
+            id="title"
+            class="form-control">
+
+    </div>
+
+    <div class="mb-4">
+
+        <label class="form-label fw-semibold">
+            Category
+        </label>
+
+        <input
+            type="text"
+            id="category"
+            class="form-control">
+
+    </div>
+
+    <button
+        type="button"
+        class="btn btn-success"
+        onclick="saveNote(false)">
+
+        💾 Save to Library
+
+    </button>
+
+</div>
+
+<!-- ================= MANUAL SECTION ================= -->
+
+<div id="manualSection" class="card p-5 mb-5" style="display:none;">
+
+    <div class="mb-3">
+
+        <label class="form-label fw-semibold">
+            Title
+        </label>
+
+        <input
+            type="text"
+            id="manualTitle"
+            class="form-control">
+
+    </div>
+
+    <div class="mb-3">
+
+        <label class="form-label fw-semibold">
+            Category
+        </label>
+
+        <input
+            type="text"
+            id="manualCategory"
+            class="form-control">
+
+    </div>
+
+    <div class="mb-4">
+
+        <label class="form-label fw-semibold">
+            Write your thoughts
+        </label>
+
+        <textarea
+            id="manualContent"
+            class="form-control"
+            rows="8"
+            placeholder="Start writing..."></textarea>
+
+    </div>
+
+    <button
+        type="button"
+        class="btn btn-success"
+        onclick="saveNote(true)">
+
+        💾 Save to Library
+
+    </button>
+
+</div>
+
+<!-- ================= CHAT SECTION ================= -->
+
+<div class="card p-5">
+
+    <h4 class="mb-4">
+        💬 Chat with your Library
+    </h4>
+
+    <div class="mb-3">
+
+        <input
+            id="question"
+            class="form-control"
+            placeholder="Ask something about your notes...">
+
+    </div>
+
+    <button
+        class="btn btn-dark"
+        onclick="askQuestion()">
+
+        Ask
+
+    </button>
+
+    <div
+        id="answer"
+        class="alert alert-info mt-4"
+        style="display:none;">
+
+    </div>
+
+</div>
+
+{% csrf_token %}
+
+<script>
+
+const aiCard = document.getElementById("aiCard");
+const manualCard = document.getElementById("manualCard");
+
+const aiMode = document.getElementById("aiMode");
+const manualMode = document.getElementById("manualMode");
+
+const aiSection = document.getElementById("aiSection");
+const manualSection = document.getElementById("manualSection");
+
+function updateMode(){
+
+    if(aiMode.checked){
+
+        aiSection.style.display = "block";
+        manualSection.style.display = "none";
+
+        aiCard.classList.add("mode-active");
+        manualCard.classList.remove("mode-active");
+
+    }
+    else{
+
+        aiSection.style.display = "none";
+        manualSection.style.display = "block";
+
+        manualCard.classList.add("mode-active");
+        aiCard.classList.remove("mode-active");
+
+    }
+
+}
+
+aiCard.onclick = function(){
+
+    aiMode.checked = true;
+
+    updateMode();
+
+};
+
+manualCard.onclick = function(){
+
+    manualMode.checked = true;
+
+    updateMode();
+
+};
+
+updateMode();
+
+function showToast(message){
+
+    const toast = document.getElementById("toast");
+
+    document.getElementById("toastText").innerText = message;
+
+    toast.classList.add("toast-show");
+
+    setTimeout(function(){
+
+        toast.classList.remove("toast-show");
+
+    },2500);
+
+}
+
+async function processAI(){
+
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    const response = await fetch("{% url 'generate_title_ai' %}",{
+
+        method:"POST",
+
+        headers:{
+            "X-CSRFToken":csrf,
+            "Content-Type":"application/x-www-form-urlencoded"
+        },
+
+        body:new URLSearchParams({
+
+            content:document.getElementById("content").value
+
+        })
+
+    });
+
+    const data = await response.json();
+
+    document.getElementById("title").value = data.title;
+    document.getElementById("category").value = data.category;
+    document.getElementById("summary").value = data.summary;
+    document.getElementById("tags").value = data.tags.join(", ");
+
+}
+
+async function saveNote(manual=false){
+
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    let title;
+    let category;
+    let content;
+    let summary;
+    let tags;
+    let ai_generated;
+
+    if(manual){
+
+        title = document.getElementById("manualTitle").value;
+        category = document.getElementById("manualCategory").value;
+        content = document.getElementById("manualContent").value;
+
+        summary = "";
+        tags = "";
+        ai_generated = false;
+
+    }else{
+
+        title = document.getElementById("title").value;
+        category = document.getElementById("category").value;
+        content = document.getElementById("content").value;
+        summary = document.getElementById("summary").value;
+        tags = document.getElementById("tags").value;
+
+        ai_generated = true;
+
+    }
+
+    const response = await fetch("{% url 'save_note' %}",{
+
+        method:"POST",
+
+        headers:{
+            "X-CSRFToken":csrf,
+            "Content-Type":"application/x-www-form-urlencoded"
+        },
+
+        body:new URLSearchParams({
+
+            title:title,
+            category:category,
+            content:content,
+            summary:summary,
+            tags:tags,
+            ai_generated:ai_generated
+
+        })
+
+    });
+
+    const data = await response.json();
+
+    showToast(data.message);
+
+    if(manual){
+
+        document.getElementById("manualTitle").value="";
+        document.getElementById("manualCategory").value="";
+        document.getElementById("manualContent").value="";
+
+    }else{
+
+        document.getElementById("title").value="";
+        document.getElementById("category").value="";
+        document.getElementById("content").value="";
+        document.getElementById("summary").value="";
+        document.getElementById("tags").value="";
+
+    }
+
+}
+
+
+
+async function saveManualNote(){
+
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    const response = await fetch("{% url 'save_note' %}",{
+
+        method:"POST",
+
+        headers:{
+            "X-CSRFToken":csrf,
+            "Content-Type":"application/x-www-form-urlencoded"
+        },
+
+        body:new URLSearchParams({
+
+            title:document.getElementById("manualTitle").value,
+            category:document.getElementById("manualCategory").value,
+            content:document.getElementById("manualContent").value,
+            summary:"",
+            tags:"",
+            ai_generated:false
+
+        })
+
+    });
+
+    const data = await response.json();
+
+    showToast(data.message);
+
+    document.getElementById("manualTitle").value="";
+    document.getElementById("manualCategory").value="";
+    document.getElementById("manualContent").value="";
+
+}
+
+async function askQuestion(){
+
+    const csrf=document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    const response=await fetch("{% url 'ask_question' %}",{
+
+        method:"POST",
+
+        headers:{
+            "X-CSRFToken":csrf,
+            "Content-Type":"application/x-www-form-urlencoded"
+        },
+
+        body:new URLSearchParams({
+
+            question:document.getElementById("question").value
+
+        })
+
+    });
+
+    const data=await response.json();
+
+    document.getElementById("answer").style.display="block";
+    document.getElementById("answer").innerHTML=data.answer;
+
+}
+
+</script>
+
+{% endblock %}

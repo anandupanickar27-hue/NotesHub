@@ -1,176 +1,272 @@
 {% extends "notes/base.html" %}
 
-    {% block content %}
-    {% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
-{% endif %}
+{% block content %}
 
-    <h1>Welcome {{ request.user.username }}</h1>
+<div class="library-header">
 
-    <div class="row mb-4">
+    <div>
+
+        <h1>Your Library</h1>
+
+        <p class="text-muted">
+            Organize, search and manage all your notes.
+        </p>
+
+    </div>
+
+    <form method="GET">
+
+        <input
+            type="text"
+            name="search"
+            class="form-control search-box"
+            placeholder="Search notes..."
+            value="{{ request.GET.search }}">
+
+    </form>
+
+</div>
+
+<div class="row mb-5">
 
     <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5><i class="bi bi-journal-text"></i> Total Notes</h5>
-                <h2>{{ total_notes }}</h2>
-            </div>
+
+        <div class="card text-center p-4">
+
+            <h6 class="text-muted">Total Notes</h6>
+
+            <h2>{{ total_notes }}</h2>
+
         </div>
+
     </div>
 
     <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5><i class="bi bi-pin-angle-fill"></i> Pinned Notes</h5>
-                <h2>{{ pinned_notes }}</h2>
-            </div>
+
+        <div class="card text-center p-4">
+
+            <h6 class="text-muted">Pinned Notes</h6>
+
+            <h2>{{ pinned_notes }}</h2>
+
         </div>
+
     </div>
 
     <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5><i class="bi bi-folder-fill"></i> Categories</h5>
-                <h2>{{ total_categories }}</h2>
-            </div>
+
+        <div class="card text-center p-4">
+
+            <h6 class="text-muted">Categories</h6>
+
+            <h2>{{ total_categories }}</h2>
+
         </div>
+
     </div>
 
 </div>
 
+{% if page_obj %}
 
-    <form method="GET" class="mb-3">
+{% for note in page_obj %}
 
-    <input
-        type="text"
-        name="search"
-        class="form-control"
-        placeholder="Search notes...">
+<div class="note-card">
 
-</form>
+    <div class="note-top">
 
-    {% for note in page_obj %}
+        <div>
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <a href="{% url 'toggle_pin' note.id %}" class="btn btn-warning btn-sm">
+            <h3>{{ note.title }}</h3>
 
-                    {% if note.is_pinned %}
-                        Unpin
-                    {% else %}
-                        Pin
-                    {% endif %}
+            <span class="note-category">
 
-                </a>
+                {{ note.category }}
 
-                <h3>{{ note.title }}</h3>
+            </span>
 
-                <p><strong>Category:</strong> {{ note.category }}</p>
+        </div>
 
-                <p>{{ note.content }}</p>
+        {% if note.is_pinned %}
 
-                <a href="{% url 'edit_note' note.id %}" class="btn btn-primary">
-                    Edit
-                </a>
+        <span class="fs-4">
+            📌
+        </span>
+
+        {% endif %}
+
+    </div>
+
+    <p class="mt-4">
+
+        {{ note.content|truncatewords:35 }}
+
+    </p>
+
+    <div class="note-footer">
+
+        <small class="text-muted">
+
+            {{ note.created_at|date:"d M Y" }}
+
+        </small>
+
+        <div class="d-flex gap-2">
+
+            <a
+                href="{% url 'toggle_pin' note.id %}"
+                class="btn btn-outline-dark btn-sm">
+
+                {% if note.is_pinned %}
+                    Unpin
+                {% else %}
+                    Pin
+                {% endif %}
+
+            </a>
+
+            <a
+                href="{% url 'edit_note' note.id %}"
+                class="btn btn-primary btn-sm">
+
+                Edit
+
+            </a>
+
+            <button
+                class="btn btn-danger btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#deleteModal{{ note.id }}">
+
+                Delete
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div
+    class="modal fade"
+    id="deleteModal{{ note.id }}"
+    tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+
+                    Delete Note
+
+                </h5>
 
                 <button
-                    type="button"
-                    class="btn btn-danger"
-                    data-bs-toggle="modal"
-                    data-bs-target="#deleteModal{{ note.id }}">
-                    Delete
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+
                 </button>
 
             </div>
-        </div>
 
-        <!-- Delete Modal -->
-        <div class="modal fade"
-             id="deleteModal{{ note.id }}"
-             tabindex="-1"
-             aria-hidden="true">
+            <div class="modal-body">
 
-            <div class="modal-dialog">
+                Are you sure you want to delete
 
-                <div class="modal-content">
+                <strong>{{ note.title }}</strong>?
 
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            Delete Note
-                        </h5>
+            </div>
 
-                        <button
-                            type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal">
-                        </button>
+            <div class="modal-footer">
 
-                    </div>
+                <button
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
 
-                    <div class="modal-body">
+                    Cancel
 
-                        Are you sure you want to delete
-                        <strong>{{ note.title }}</strong>?
+                </button>
 
-                    </div>
+                <form
+                    method="POST"
+                    action="{% url 'delete_note' note.id %}">
 
-                    <div class="modal-footer">
+                    {% csrf_token %}
 
-                        <button
-                            type="button"
-                            class="btn btn-secondary"
-                            data-bs-dismiss="modal">
-                            Cancel
-                        </button>
+                    <button
+                        class="btn btn-danger"
+                        type="submit">
 
-                        <form method="POST"
-                              action="{% url 'delete_note' note.id %}">
+                        Delete
 
-                            {% csrf_token %}
+                    </button>
 
-                            <button
-                                type="submit"
-                                class="btn btn-danger">
-                                Delete
-                            </button>
-
-                        </form>
-
-                    </div>
-
-                </div>
+                </form>
 
             </div>
 
         </div>
 
-    {% endfor %}
+    </div>
 
-<div class="mt-4">
+</div>
+
+{% endfor %}
+
+{% else %}
+
+<div class="card p-5 text-center">
+
+    <h3>No Notes Found</h3>
+
+    <p class="text-muted mt-3">
+
+        Start by creating your first note in the Workspace.
+
+    </p>
+
+</div>
+
+{% endif %}
+
+<div class="d-flex justify-content-center align-items-center mt-5 gap-3">
 
     {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-secondary">
-            Previous
-        </a>
+
+    <a
+        href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search }}"
+        class="btn btn-outline-dark">
+
+        ← Previous
+
+    </a>
+
     {% endif %}
 
-    <span class="mx-3">
-        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    <span class="fw-semibold">
+
+        Page {{ page_obj.number }}
+        of
+        {{ page_obj.paginator.num_pages }}
+
     </span>
 
     {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-secondary">
-            Next
-        </a>
+
+    <a
+        href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search }}"
+        class="btn btn-outline-dark">
+
+        Next →
+
+    </a>
+
     {% endif %}
 
 </div>
-    {% endblock %}
 
-
-
+{% endblock %}

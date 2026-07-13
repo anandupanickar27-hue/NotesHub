@@ -8,6 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.http import JsonResponse
+from .ai import process_note
+from django.db.models import Q
+from .vector_store import save_to_chroma
+from .vector_store import search_chroma
+from .ai import ask_notes
+
 
 from notes.models import Category, Note
 from .forms import NoteForm
@@ -45,7 +52,7 @@ def login_view(request):
         user = authenticate(username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect("home")
+            return redirect("workspace")
         else:
             messages.error(request, "Invalid username or password")
             return redirect("login")
@@ -53,14 +60,24 @@ def login_view(request):
 
 
 @login_required
-def home(request):
+def notes_list(request):
 
     search = request.GET.get("search")
 
     notes = Note.objects.filter(user=request.user).order_by("-is_pinned", "-created_at")
 
+
     if search:
-        notes = notes.filter(title__icontains=search)
+
+        notes = notes.filter(
+
+            Q(title__icontains=search) |
+            Q(content__icontains=search) |
+            Q(summary__icontains=search) |
+            Q(tags__icontains=search) |
+            Q(category__name__icontains=search)
+
+        )
 
     paginator = Paginator(notes, 5)
 
@@ -75,7 +92,9 @@ def home(request):
         is_pinned=True
     ).count()
 
-    total_categories = Category.objects.count()
+    total_categories = Category.objects.filter(
+        user=request.user
+    ).count()
 
     return render(request, "notes/home.html", {
     "page_obj": page_obj,
@@ -89,23 +108,7 @@ def logout_view(request):
     logout(request)
     return redirect("login")
 
-@login_required
-def add_note(request):
 
-    if request.method == "POST":
-        form = NoteForm(request.POST)
-
-        if form.is_valid():
-            note = form.save(commit=False)
-            note.user = request.user
-            note.save()
-
-            return redirect("home")
-
-    else:
-        form = NoteForm()
-
-    return render(request, "notes/add_note.html", {"form": form})
 
 @login_required
 def edit_note(request, pk):
@@ -117,7 +120,7 @@ def edit_note(request, pk):
 
         if form.is_valid():
             form.save()
-            return redirect("home")
+            return redirect("library")
 
     else:
         form = NoteForm(instance=note)
@@ -130,10 +133,17 @@ def delete_note(request, pk):
     note = Note.objects.get(pk=pk, user=request.user)
 
     if request.method == "POST":
+
+        category = note.category
+
         note.delete()
+
+        if not Note.objects.filter(category=category).exists():
+            category.delete()
+
         messages.success(request, "Note deleted successfully.")
 
-    return redirect("home")
+    return redirect("library")
 
 @login_required
 def toggle_pin(request, pk):
@@ -144,4 +154,85 @@ def toggle_pin(request, pk):
 
     note.save()
 
-    return redirect("home")
+    return redirect("library")
+
+
+@login_required
+def generate_title_ai(request):
+
+    if request.method == "POST":
+
+        content = request.POST.get("content")
+
+        result = process_note(content)
+
+        return JsonResponse(result)
+
+
+@login_required
+def ai_workspace(request):
+    return render(request, "notes/ai_workspace.html")
+
+
+def save_note(request):
+
+    if request.method == "POST":
+
+        title = request.POST.get("title")
+        content = request.POST.get("content")
+        category_name = request.POST.get("category")
+        summary = request.POST.get("summary")
+        tags = request.POST.get("tags")
+        ai_generated = request.POST.get("ai_generated") == "true"
+
+        category, created = Category.objects.get_or_create(
+            user=request.user,
+            name=category_name
+        )
+
+        note = Note.objects.create(
+            user=request.user,
+            title=title,
+            content=content,
+            category=category,
+            summary=summary,
+            tags=tags,
+            ai_generated=ai_generated,
+            embedding_status=False
+        )
+
+        save_to_chroma(note)
+
+        note.embedding_status = True
+        note.save()
+
+        return JsonResponse({
+            "message": "Note saved successfully!"
+        })
+    
+
+@login_required
+def ask_question(request):
+
+    if request.method == "POST":
+
+        question = request.POST.get("question")
+
+        results = search_chroma(
+            question,
+            request.user.id
+        )
+
+        documents = results["documents"][0]
+
+        context = "\n\n".join(documents)
+
+        answer = ask_notes(question, context)
+
+        return JsonResponse({
+            "answer": answer
+        })
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+   
