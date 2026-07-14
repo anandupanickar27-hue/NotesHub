@@ -14,6 +14,10 @@ from django.db.models import Q
 from .vector_store import save_to_chroma
 from .vector_store import search_chroma
 from .ai import ask_notes
+from django.shortcuts import get_object_or_404
+from .vector_store import collection
+from django.db.models import Count
+
 
 
 from notes.models import Category, Note
@@ -62,22 +66,48 @@ def login_view(request):
 @login_required
 def notes_list(request):
 
-    search = request.GET.get("search")
+    search = request.GET.get("search", "")
+    sort = request.GET.get("sort", "latest")
+    category = request.GET.get("category", "")
+    note_type = request.GET.get("type", "")
+    pinned = request.GET.get("pinned", "")
 
-    notes = Note.objects.filter(user=request.user).order_by("-is_pinned", "-created_at")
-
+    notes = Note.objects.filter(user=request.user)
 
     if search:
-
         notes = notes.filter(
-
-            Q(title__icontains=search) |
-            Q(content__icontains=search) |
-            Q(summary__icontains=search) |
-            Q(tags__icontains=search) |
-            Q(category__name__icontains=search)
-
+            title__icontains=search
+        ) | Note.objects.filter(
+            user=request.user,
+            content__icontains=search
         )
+
+    if category:
+        notes = notes.filter(category__name=category)
+
+    if note_type == "ai":
+        notes = notes.filter(ai_generated=True)
+
+    elif note_type == "manual":
+        notes = notes.filter(ai_generated=False)
+
+    if pinned == "yes":
+        notes = notes.filter(is_pinned=True)
+
+    elif pinned == "no":
+        notes = notes.filter(is_pinned=False)
+
+    if sort == "latest":
+        notes = notes.order_by("-created_at")
+
+    elif sort == "oldest":
+        notes = notes.order_by("created_at")
+
+    elif sort == "az":
+        notes = notes.order_by("title")
+
+    elif sort == "za":
+        notes = notes.order_by("-title")
 
     paginator = Paginator(notes, 5)
 
@@ -92,17 +122,27 @@ def notes_list(request):
         is_pinned=True
     ).count()
 
-    total_categories = Category.objects.filter(
+    total_categories = (
+        Category.objects
+        .filter(user=request.user)
+        .annotate(note_count=Count("note"))
+        .filter(note_count__gt=0)
+        .count()
+    )
+
+    categories = Category.objects.filter(
         user=request.user
-    ).count()
+    ).order_by("name")
 
     return render(request, "notes/home.html", {
-    "page_obj": page_obj,
-    "total_notes": total_notes,
-    "pinned_notes": pinned_notes,
-    "total_categories": total_categories,
-})
 
+        "page_obj": page_obj,
+        "total_notes": total_notes,
+        "pinned_notes": pinned_notes,
+        "total_categories": total_categories,
+        "categories": categories,
+
+    })
 
 def logout_view(request):
     logout(request)
@@ -110,23 +150,38 @@ def logout_view(request):
 
 
 
+from .vector_store import collection, save_to_chroma
+
 @login_required
 def edit_note(request, pk):
 
     note = Note.objects.get(pk=pk, user=request.user)
 
     if request.method == "POST":
+
         form = NoteForm(request.POST, instance=note)
 
         if form.is_valid():
-            form.save()
+
+            note = form.save()
+
+            collection.delete(
+                ids=[str(note.id)]
+            )
+
+            save_to_chroma(note)
+
+            messages.success(request, "Note updated successfully.")
+
             return redirect("library")
 
     else:
+
         form = NoteForm(instance=note)
 
-    return render(request, "notes/edit_note.html", {"form": form})
-
+    return render(request, "notes/edit_note.html", {
+        "form": form
+    })
 @login_required
 def delete_note(request, pk):
 
@@ -134,16 +189,24 @@ def delete_note(request, pk):
 
     if request.method == "POST":
 
-        category = note.category
+        collection.delete(
+            ids=[str(note.id)]
+        )
 
         note.delete()
 
-        if not Note.objects.filter(category=category).exists():
-            category.delete()
+        remaining_notes = Note.objects.filter(
+            user=request.user,
+            category=note.category
+        )
+
+        if not remaining_notes.exists():
+
+            note.category.delete()
 
         messages.success(request, "Note deleted successfully.")
 
-    return redirect("library")
+        return redirect("library")
 
 @login_required
 def toggle_pin(request, pk):
@@ -171,8 +234,22 @@ def generate_title_ai(request):
 
 @login_required
 def ai_workspace(request):
-    return render(request, "notes/ai_workspace.html")
+    categories = Category.objects.filter(
+        user=request.user
+    ).order_by("name")
+    return render(
 
+    request,
+
+    "notes/ai_workspace.html",
+
+    {
+
+        "categories": categories
+
+    }
+
+)
 
 def save_note(request):
 
@@ -184,11 +261,23 @@ def save_note(request):
         summary = request.POST.get("summary")
         tags = request.POST.get("tags")
         ai_generated = request.POST.get("ai_generated") == "true"
+        if ai_generated:
 
-        category, created = Category.objects.get_or_create(
-            user=request.user,
-            name=category_name
-        )
+            category = Category.objects.get(
+
+                user=request.user,
+                name=category_name
+
+            )
+
+        else:
+
+            category, _ = Category.objects.get_or_create(
+
+                user=request.user,
+                name=category_name
+
+            )
 
         note = Note.objects.create(
             user=request.user,
@@ -214,25 +303,65 @@ def save_note(request):
 @login_required
 def ask_question(request):
 
-    if request.method == "POST":
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request"}, status=400)
 
-        question = request.POST.get("question")
+    question = request.POST.get("question", "").strip()
 
-        results = search_chroma(
-            question,
-            request.user.id
-        )
-
-        documents = results["documents"][0]
-
-        context = "\n\n".join(documents)
-
-        answer = ask_notes(question, context)
-
+    if not question:
         return JsonResponse({
-            "answer": answer
+            "answer": "Please enter a question."
         })
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    results = search_chroma(question, request.user.id)
 
-   
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not documents:
+        return JsonResponse({
+            "answer": "I couldn't find any notes related to that."
+        })
+
+    seen = set()
+    context = ""
+
+    for doc, meta in zip(documents, metadatas):
+
+        key = (
+            meta.get("title"),
+            meta.get("created_at")
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        context += f"""
+Title: {meta.get("title")}
+
+Category: {meta.get("category")}
+
+Created: {meta.get("created_at")}
+
+AI Generated: {meta.get("ai_generated")}
+
+Pinned: {meta.get("is_pinned")}
+
+{doc}
+
+------------------------------------------
+
+"""
+
+    print("QUESTION:", question)
+    print("CONTEXT:", context)
+
+    answer = ask_notes(question, context)
+
+    print("ANSWER:", answer)
+
+    return JsonResponse({
+        "answer": answer
+    })

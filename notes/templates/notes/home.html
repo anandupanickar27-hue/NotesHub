@@ -14,16 +14,121 @@
 
     </div>
 
-    <form method="GET">
+    <form method="GET" class="row g-3 mb-5">
+
+    <div class="col-md-3">
 
         <input
             type="text"
             name="search"
-            class="form-control search-box"
-            placeholder="Search notes..."
-            value="{{ request.GET.search }}">
+            value="{{ request.GET.search }}"
+            class="form-control"
+            placeholder="Search...">
 
-    </form>
+    </div>
+
+    <div class="col-md-2">
+
+        <select
+            name="sort"
+            class="form-select">
+
+            <option value="latest" {% if request.GET.sort == "latest" %}selected{% endif %}>Latest</option>
+
+            <option value="oldest" {% if request.GET.sort == "oldest" %}selected{% endif %}>Oldest</option>
+
+            <option value="az" {% if request.GET.sort == "az" %}selected{% endif %}>Title A-Z</option>
+
+            <option value="za" {% if request.GET.sort == "za" %}selected{% endif %}>Title Z-A</option>
+
+        </select>
+
+    </div>
+
+    <div class="col-md-2">
+
+        <select
+            name="category"
+            class="form-select">
+
+            <option value="">All Categories</option>
+
+            {% for cat in categories %}
+
+            <option
+                value="{{ cat.name }}"
+                {% if request.GET.category == cat.name %}selected{% endif %}>
+
+                {{ cat.name }}
+
+            </option>
+
+            {% endfor %}
+
+        </select>
+
+    </div>
+
+    <div class="col-md-2">
+
+        <select
+            name="type"
+            class="form-select">
+
+            <option value="">All Notes</option>
+
+            <option value="ai" {% if request.GET.type == "ai" %}selected{% endif %}>
+
+                AI
+
+            </option>
+
+            <option value="manual" {% if request.GET.type == "manual" %}selected{% endif %}>
+
+                Manual
+
+            </option>
+
+        </select>
+
+    </div>
+
+    <div class="col-md-2">
+
+        <select
+            name="pinned"
+            class="form-select">
+
+            <option value="">All Pin Status</option>
+
+            <option value="yes" {% if request.GET.pinned == "yes" %}selected{% endif %}>
+
+                Pinned
+
+            </option>
+
+            <option value="no" {% if request.GET.pinned == "no" %}selected{% endif %}>
+
+                Unpinned
+
+            </option>
+
+        </select>
+
+    </div>
+
+    <div class="col-md-1">
+
+        <button
+            class="btn btn-primary w-100">
+
+            Go
+
+        </button>
+
+    </div>
+
+</form>
 
 </div>
 
@@ -237,11 +342,9 @@
 
     {% if page_obj.has_previous %}
 
-    <a
-        href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search }}"
-        class="btn btn-outline-dark">
+    <a href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search }}&sort={{ request.GET.sort }}&category={{ request.GET.category }}&type={{ request.GET.type }}&pinned={{ request.GET.pinned }}" class="btn btn-outline-dark">
 
-        ← Previous
+    ← Previous
 
     </a>
 
@@ -257,11 +360,9 @@
 
     {% if page_obj.has_next %}
 
-    <a
-        href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search }}"
-        class="btn btn-outline-dark">
+    <a href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search }}&sort={{ request.GET.sort }}&category={{ request.GET.category }}&type={{ request.GET.type }}&pinned={{ request.GET.pinned }}" class="btn btn-outline-dark">
 
-        Next →
+    Next →
 
     </a>
 

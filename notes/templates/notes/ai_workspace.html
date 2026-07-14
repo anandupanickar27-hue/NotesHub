@@ -87,13 +87,14 @@
     </div>
 
     <button
-        type="button"
-        class="btn btn-primary mb-4"
-        onclick="processAI()">
+    id="aiButton"
+    type="button"
+    class="btn btn-primary mb-4"
+    onclick="processAI()">
 
-        ✨ Analyze with AI
+    ✨ Analyze with AI
 
-    </button>
+</button>
 
     <div class="mb-3">
 
@@ -182,11 +183,22 @@
         </label>
 
         <input
-            type="text"
             id="manualCategory"
-            class="form-control">
+            list="categoryList"
+            class="form-control"
+            placeholder="Select a category">
 
-    </div>
+        <datalist id="categoryList">
+
+            {% for cat in categories %}
+
+            <option value="{{ cat.name }}"></option>
+
+            {% endfor %}
+
+        </datalist>
+
+ </div>
 
     <div class="mb-4">
 
@@ -203,13 +215,13 @@
     </div>
 
     <button
-        type="button"
-        class="btn btn-success"
-        onclick="saveNote(true)">
+    id="saveButton"
+    class="btn btn-success"
+    onclick="saveNote(false)">
 
-        💾 Save to Library
+    💾 Save to Library
 
-    </button>
+</button>
 
 </div>
 
@@ -231,6 +243,7 @@
     </div>
 
     <button
+        id="askButton"
         class="btn btn-dark"
         onclick="askQuestion()">
 
@@ -239,11 +252,19 @@
     </button>
 
     <div
-        id="answer"
-        class="alert alert-info mt-4"
-        style="display:none;">
+    id="answerCard"
+    class="chat-answer"
+    style="display:none;">
+
+    <div class="chat-header">
+
+        🤖 GoFi AI
 
     </div>
+
+    <div id="answer"></div>
+
+</div>
 
 </div>
 
@@ -319,35 +340,86 @@ function showToast(message){
 
 async function processAI(){
 
-    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const content = document.getElementById("content").value.trim();
 
-    const response = await fetch("{% url 'generate_title_ai' %}",{
+    if(content === ""){
 
-        method:"POST",
+        showToast("Please write something first.");
 
-        headers:{
-            "X-CSRFToken":csrf,
-            "Content-Type":"application/x-www-form-urlencoded"
-        },
+        return;
 
-        body:new URLSearchParams({
+    }
 
-            content:document.getElementById("content").value
+    const button = document.getElementById("aiButton");
 
-        })
+    button.disabled = true;
 
-    });
+    button.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Analyzing...
+    `;
 
-    const data = await response.json();
+    try{
 
-    document.getElementById("title").value = data.title;
-    document.getElementById("category").value = data.category;
-    document.getElementById("summary").value = data.summary;
-    document.getElementById("tags").value = data.tags.join(", ");
+        const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+        const response = await fetch("{% url 'generate_title_ai' %}",{
+
+            method:"POST",
+
+            headers:{
+                "X-CSRFToken":csrf,
+                "Content-Type":"application/x-www-form-urlencoded"
+            },
+
+            body:new URLSearchParams({
+
+                content:document.getElementById("content").value
+
+            })
+
+        });
+
+        const data = await response.json();
+
+        document.getElementById("title").value = data.title;
+        document.getElementById("category").value = data.category;
+        document.getElementById("summary").value = data.summary;
+        document.getElementById("tags").value = data.tags.join(", ");
+
+    }
+
+    catch(error){
+
+        showToast("Unable to connect to AI. Please try again.");
+
+    }
+
+    finally{
+
+        button.disabled = false;
+
+        button.innerHTML = "✨ Analyze with AI";
+
+    }
 
 }
 
-async function saveNote(manual=false){
+
+async function saveNote(manual = false){
+
+    const saveBtn = manual
+        ? document.getElementById("manualSaveButton")
+        : document.getElementById("saveButton");
+
+    if(saveBtn.disabled) return;
+
+    saveBtn.disabled = true;
+
+    saveBtn.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Saving...
+    `;
 
     const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
 
@@ -360,9 +432,9 @@ async function saveNote(manual=false){
 
     if(manual){
 
-        title = document.getElementById("manualTitle").value;
-        category = document.getElementById("manualCategory").value;
-        content = document.getElementById("manualContent").value;
+        title = document.getElementById("manualTitle").value.trim();
+        category = document.getElementById("manualCategory").value.trim();
+        content = document.getElementById("manualContent").value.trim();
 
         summary = "";
         tags = "";
@@ -370,126 +442,175 @@ async function saveNote(manual=false){
 
     }else{
 
-        title = document.getElementById("title").value;
-        category = document.getElementById("category").value;
-        content = document.getElementById("content").value;
-        summary = document.getElementById("summary").value;
-        tags = document.getElementById("tags").value;
+        title = document.getElementById("title").value.trim();
+        category = document.getElementById("category").value.trim();
+        content = document.getElementById("content").value.trim();
+        summary = document.getElementById("summary").value.trim();
+        tags = document.getElementById("tags").value.trim();
 
         ai_generated = true;
 
     }
 
-    const response = await fetch("{% url 'save_note' %}",{
+    if(title === ""){
 
-        method:"POST",
+        showToast("Title is required.");
 
-        headers:{
-            "X-CSRFToken":csrf,
-            "Content-Type":"application/x-www-form-urlencoded"
-        },
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = "💾 Save to Library";
 
-        body:new URLSearchParams({
+        return;
 
-            title:title,
-            category:category,
-            content:content,
-            summary:summary,
-            tags:tags,
-            ai_generated:ai_generated
+    }
 
-        })
+    if(category === ""){
 
-    });
+        showToast("Category is required.");
 
-    const data = await response.json();
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = "💾 Save to Library";
 
-    showToast(data.message);
+        return;
 
-    if(manual){
+    }
 
-        document.getElementById("manualTitle").value="";
-        document.getElementById("manualCategory").value="";
-        document.getElementById("manualContent").value="";
+    if(content === ""){
 
-    }else{
+        showToast("Content cannot be empty.");
 
-        document.getElementById("title").value="";
-        document.getElementById("category").value="";
-        document.getElementById("content").value="";
-        document.getElementById("summary").value="";
-        document.getElementById("tags").value="";
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = "💾 Save to Library";
+
+        return;
+
+    }
+
+    try{
+
+        const response = await fetch("{% url 'save_note' %}",{
+
+            method:"POST",
+
+            headers:{
+                "X-CSRFToken":csrf,
+                "Content-Type":"application/x-www-form-urlencoded"
+            },
+
+            body:new URLSearchParams({
+
+                title:title,
+                category:category,
+                content:content,
+                summary:summary,
+                tags:tags,
+                ai_generated:ai_generated
+
+            })
+
+        });
+
+        const data = await response.json();
+
+        showToast(data.message);
+
+        if(response.ok){
+
+            if(manual){
+
+                document.getElementById("manualTitle").value = "";
+                document.getElementById("manualCategory").value = "";
+                document.getElementById("manualContent").value = "";
+
+            }else{
+
+                document.getElementById("title").value = "";
+                document.getElementById("category").value = "";
+                document.getElementById("content").value = "";
+                document.getElementById("summary").value = "";
+                document.getElementById("tags").value = "";
+
+            }
+
+        }
+
+    }catch(error){
+
+        showToast("Unable to save note.");
+
+    }finally{
+
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = "💾 Save to Library";
 
     }
 
 }
 
-
-
-async function saveManualNote(){
-
-    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
-
-    const response = await fetch("{% url 'save_note' %}",{
-
-        method:"POST",
-
-        headers:{
-            "X-CSRFToken":csrf,
-            "Content-Type":"application/x-www-form-urlencoded"
-        },
-
-        body:new URLSearchParams({
-
-            title:document.getElementById("manualTitle").value,
-            category:document.getElementById("manualCategory").value,
-            content:document.getElementById("manualContent").value,
-            summary:"",
-            tags:"",
-            ai_generated:false
-
-        })
-
-    });
-
-    const data = await response.json();
-
-    showToast(data.message);
-
-    document.getElementById("manualTitle").value="";
-    document.getElementById("manualCategory").value="";
-    document.getElementById("manualContent").value="";
-
-}
-
 async function askQuestion(){
+
+    const question = document.getElementById("question").value.trim();
+
+    if(question===""){
+
+        showToast("Please enter a question.");
+
+        return;
+
+    }
+
+    const button = document.getElementById("askButton");
+    
+    button.disabled=true;
+
+    button.innerHTML=`
+    <span class="spinner-border spinner-border-sm me-2"></span>
+    Thinking...
+    `;
 
     const csrf=document.querySelector("[name=csrfmiddlewaretoken]").value;
 
-    const response=await fetch("{% url 'ask_question' %}",{
+    try{
 
-        method:"POST",
+        const response=await fetch("{% url 'ask_question' %}",{
 
-        headers:{
-            "X-CSRFToken":csrf,
-            "Content-Type":"application/x-www-form-urlencoded"
-        },
+            method:"POST",
 
-        body:new URLSearchParams({
+            headers:{
+                "X-CSRFToken":csrf,
+                "Content-Type":"application/x-www-form-urlencoded"
+            },
 
-            question:document.getElementById("question").value
+            body:new URLSearchParams({
 
-        })
+                question:question
 
-    });
+            })
 
-    const data=await response.json();
+        });
 
-    document.getElementById("answer").style.display="block";
-    document.getElementById("answer").innerHTML=data.answer;
+        const data=await response.json();
+
+        document.getElementById("answerCard").style.display="block";
+
+        document.getElementById("answer").innerHTML=data.answer;
+
+    }
+
+    catch{
+
+        showToast("Unable to get an answer.");
+
+    }
+
+    finally{
+
+        button.disabled=false;
+
+        button.innerHTML="Ask";
+
+    }
 
 }
-
 </script>
 
 {% endblock %}

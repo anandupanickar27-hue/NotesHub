@@ -908,6 +908,16 @@ textarea:focus{
 
 /* ================= PAGE TRANSITION ================= */
 
+.form-select{
+
+    border-radius:14px!important;
+
+    padding:14px!important;
+
+    border:1px solid #e2e8f0!important;
+
+}
+
 body{
 
     animation:pageLoad .45s ease;
@@ -1014,119 +1024,21 @@ body{
 
 }
 
-/* ================= LIGHT & DARK THEME READY ================= */
-
-:root{
-
-    --bg:#f8fafc;
-    --surface:rgba(255,255,255,.82);
-    --surface-solid:#ffffff;
-    --text:#111827;
-    --muted:#64748b;
-    --border:#e2e8f0;
-    --primary:#2563eb;
-    --danger:#ef4444;
-    --shadow:0 20px 45px rgba(15,23,42,.08);
-
-}
-
-.dark{
-
-    --bg:#0f172a;
-    --surface:rgba(30,41,59,.75);
-    --surface-solid:#1e293b;
-    --text:#f8fafc;
-    --muted:#cbd5e1;
-    --border:#334155;
-    --primary:#60a5fa;
-
-}
-
 body{
 
-    background:var(--bg);
+    font-family:'Poppins',sans-serif;
 
-    color:var(--text);
+    color:#111827;
 
-    transition:.35s;
+    min-height:100vh;
 
-}
-
-.card,
-.note-card,
-.mode-card,
-.navbar{
-
-    background:var(--surface)!important;
+    background:
+    radial-gradient(circle at top left,#dbeafe 0%,transparent 35%),
+    radial-gradient(circle at top right,#ede9fe 0%,transparent 35%),
+    linear-gradient(180deg,#f8fafc,#eef2ff);
 
 }
 
-input,
-textarea{
-
-    background:var(--surface-solid)!important;
-
-    color:var(--text)!important;
-
-    border-color:var(--border)!important;
-
-}
-
-.text-muted{
-
-    color:var(--muted)!important;
-
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-span,
-label{
-
-    color:var(--text);
-
-}
-
-.note-category{
-
-    background:rgba(37,99,235,.12);
-
-}
-
-.nav-link{
-
-    color:var(--muted)!important;
-
-}
-
-.nav-link:hover{
-
-    color:var(--primary)!important;
-
-}
-
-.user-avatar{
-
-    background:var(--primary);
-
-}
-
-.btn-primary{
-
-    background:var(--primary)!important;
-
-}
-
-.card,
-.note-card{
-
-    box-shadow:var(--shadow);
-
-}
 
 /* ================= AUTH ================= */
 
@@ -1225,5 +1137,43 @@ label{
     text-decoration:none;
 
     font-weight:600;
+
+}
+
+/* ================= CHAT ================= */
+
+.chat-answer{
+
+    margin-top:30px;
+
+    padding:24px;
+
+    background:rgba(255,255,255,.85);
+
+    backdrop-filter:blur(18px);
+
+    border-radius:18px;
+
+    border-left:5px solid #2563eb;
+
+    box-shadow:0 12px 35px rgba(15,23,42,.05);
+
+}
+
+.chat-header{
+
+    font-weight:700;
+
+    color:#2563eb;
+
+    margin-bottom:15px;
+
+}
+
+#answer{
+
+    white-space:pre-wrap;
+
+    line-height:1.8;
 
 }
