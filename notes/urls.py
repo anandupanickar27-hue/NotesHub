@@ -14,4 +14,8 @@ urlpatterns = [
     path("ai/", views.ai_workspace, name="ai_workspace"),
     path("save-note/", views.save_note, name="save_note"),
     path("ask/", views.ask_question, name="ask_question"),
+    path("demo/", views.demo_login, name="demo_login"),
+    path("about/", views.about, name="about"),
+    path("profile/", views.profile, name="profile"),
+    path("profile/edit/", views.edit_profile, name="edit_profile"),
 ]   

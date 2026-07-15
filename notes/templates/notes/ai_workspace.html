@@ -149,13 +149,14 @@
     </div>
 
     <button
-        type="button"
-        class="btn btn-success"
-        onclick="saveNote(false)">
+    id="saveButton"
+    type="button"
+    class="btn btn-success"
+    onclick="saveNote(false)">
 
-        💾 Save to Library
+     Save to Library
 
-    </button>
+</button>
 
 </div>
 
@@ -178,27 +179,27 @@
 
     <div class="mb-3">
 
-        <label class="form-label fw-semibold">
-            Category
-        </label>
+    <label class="form-label fw-semibold">
+        Category
+    </label>
 
-        <input
-            id="manualCategory"
-            list="categoryList"
-            class="form-control"
-            placeholder="Select a category">
+    <select
+        id="manualCategory"
+        placeholder="Select or create a category">
+<option value="">Select a category...</option>
+        {% for cat in categories %}
 
-        <datalist id="categoryList">
+        <option value="{{ cat.name }}">
 
-            {% for cat in categories %}
+            {{ cat.name }}
 
-            <option value="{{ cat.name }}"></option>
+        </option>
 
-            {% endfor %}
+        {% endfor %}
 
-        </datalist>
+    </select>
 
- </div>
+</div>
 
     <div class="mb-4">
 
@@ -215,13 +216,14 @@
     </div>
 
     <button
-    id="saveButton"
-    class="btn btn-success"
-    onclick="saveNote(false)">
+        id="manualSaveButton"
+        type="button"
+        class="btn btn-success"
+        onclick="saveNote(true)">
 
-    💾 Save to Library
+        Save to Library
 
-</button>
+    </button>
 
 </div>
 
@@ -433,7 +435,7 @@ async function saveNote(manual = false){
     if(manual){
 
         title = document.getElementById("manualTitle").value.trim();
-        category = document.getElementById("manualCategory").value.trim();
+        category = manualCategory.getValue().trim();
         content = document.getElementById("manualContent").value.trim();
 
         summary = "";
@@ -611,6 +613,32 @@ async function askQuestion(){
     }
 
 }
+
+let manualCategory;
+
+window.addEventListener("load", function(){
+
+    manualCategory = new TomSelect("#manualCategory",{
+
+        create:true,
+
+        persist:true,
+
+        createOnBlur:true,
+
+        closeAfterSelect:true,
+
+        maxItems:1,
+
+        searchField:["text"],
+
+        allowEmptyOption:true,
+
+        items:[]
+
+    });
+
+});
 </script>
 
 {% endblock %}

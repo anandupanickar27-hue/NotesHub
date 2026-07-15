@@ -1,0 +1,94 @@
+{% extends "notes/base.html" %}
+
+{% block title %}Edit Profile{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+
+    <div class="col-lg-6">
+
+        <div class="card p-5">
+
+            <h2 class="mb-4">
+
+                Edit Profile
+
+            </h2>
+
+            <form method="POST">
+
+                {% csrf_token %}
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+
+                        First Name
+
+                    </label>
+
+                    {{ form.first_name }}
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+
+                        Last Name
+
+                    </label>
+
+                    {{ form.last_name }}
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+
+                        Email
+
+                    </label>
+
+                    {{ form.email }}
+
+                </div>
+
+                <div class="mb-4">
+
+                    <label class="form-label">
+
+                        Bio
+
+                    </label>
+
+                    {{ form.bio }}
+
+                </div>
+
+                <button
+                    class="btn btn-success">
+
+                    Save Changes
+
+                </button>
+
+                <a
+                    href="{% url 'profile' %}"
+                    class="btn btn-secondary">
+
+                    Cancel
+
+                </a>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

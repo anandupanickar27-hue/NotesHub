@@ -1,23 +1,21 @@
-from django.shortcuts import render
-from django.contrib.auth.models import User
-from django.http import HttpResponse
-from django.shortcuts import redirect
-from django.contrib.auth import authenticate
-from django.contrib.auth import login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from .ai import process_note
-from django.db.models import Q
-from .vector_store import save_to_chroma
-from .vector_store import search_chroma
-from .ai import ask_notes
-from django.shortcuts import get_object_or_404
-from .vector_store import collection
-from django.db.models import Count
+from django.db.models import Q, Count
 
+from .models import Note, Category
+from .ai import process_note, ask_notes
+from .vector_store import (
+    save_to_chroma,
+    search_chroma,
+    collection,
+)
+from .forms import ProfileForm
+from .models import Profile
 
 
 from notes.models import Category, Note
@@ -64,6 +62,7 @@ def login_view(request):
 
 
 @login_required
+@login_required
 def notes_list(request):
 
     search = request.GET.get("search", "")
@@ -75,38 +74,58 @@ def notes_list(request):
     notes = Note.objects.filter(user=request.user)
 
     if search:
+
         notes = notes.filter(
-            title__icontains=search
-        ) | Note.objects.filter(
-            user=request.user,
-            content__icontains=search
+            Q(title__icontains=search) |
+            Q(content__icontains=search) |
+            Q(summary__icontains=search) |
+            Q(tags__icontains=search)
         )
 
     if category:
-        notes = notes.filter(category__name=category)
+
+        notes = notes.filter(
+            category__name=category
+        )
 
     if note_type == "ai":
-        notes = notes.filter(ai_generated=True)
+
+        notes = notes.filter(
+            ai_generated=True
+        )
 
     elif note_type == "manual":
-        notes = notes.filter(ai_generated=False)
+
+        notes = notes.filter(
+            ai_generated=False
+        )
 
     if pinned == "yes":
-        notes = notes.filter(is_pinned=True)
+
+        notes = notes.filter(
+            is_pinned=True
+        )
 
     elif pinned == "no":
-        notes = notes.filter(is_pinned=False)
+
+        notes = notes.filter(
+            is_pinned=False
+        )
 
     if sort == "latest":
+
         notes = notes.order_by("-created_at")
 
     elif sort == "oldest":
+
         notes = notes.order_by("created_at")
 
     elif sort == "az":
+
         notes = notes.order_by("title")
 
     elif sort == "za":
+
         notes = notes.order_by("-title")
 
     paginator = Paginator(notes, 5)
@@ -115,10 +134,13 @@ def notes_list(request):
 
     page_obj = paginator.get_page(page_number)
 
-    total_notes = Note.objects.filter(user=request.user).count()
+    user_notes = Note.objects.filter(
+        user=request.user
+    )
 
-    pinned_notes = Note.objects.filter(
-        user=request.user,
+    total_notes = user_notes.count()
+
+    pinned_notes = user_notes.filter(
         is_pinned=True
     ).count()
 
@@ -130,9 +152,13 @@ def notes_list(request):
         .count()
     )
 
-    categories = Category.objects.filter(
-        user=request.user
-    ).order_by("name")
+    categories = (
+        Category.objects
+        .filter(user=request.user)
+        .annotate(note_count=Count("note"))
+        .filter(note_count__gt=0)
+        .order_by("name")
+    )
 
     return render(request, "notes/home.html", {
 
@@ -145,12 +171,30 @@ def notes_list(request):
     })
 
 def logout_view(request):
+    if request.session.get("is_demo"):
+
+    
+
+        demo_notes = Note.objects.filter(
+            user=request.user
+        )
+
+        for note in demo_notes:
+
+            collection.delete(
+                ids=[str(note.id)]
+            )
+
+        demo_notes.delete()
+
+        request.session.pop("is_demo", None)
+
+    request.session.pop("chat_history", None)
     logout(request)
     return redirect("login")
 
 
 
-from .vector_store import collection, save_to_chroma
 
 @login_required
 def edit_note(request, pk):
@@ -263,11 +307,9 @@ def save_note(request):
         ai_generated = request.POST.get("ai_generated") == "true"
         if ai_generated:
 
-            category = Category.objects.get(
-
+            category, _ = Category.objects.get_or_create(
                 user=request.user,
                 name=category_name
-
             )
 
         else:
@@ -298,7 +340,11 @@ def save_note(request):
         return JsonResponse({
             "message": "Note saved successfully!"
         })
-    
+
+
+def about(request):
+
+    return render(request, "notes/about.html")  
 
 @login_required
 def ask_question(request):
@@ -313,7 +359,11 @@ def ask_question(request):
             "answer": "Please enter a question."
         })
 
-    results = search_chroma(question, request.user.id)
+
+    results = search_chroma(
+        question,
+        request.user.id
+    )
 
     documents = results.get("documents", [[]])[0]
     metadatas = results.get("metadatas", [[]])[0]
@@ -355,13 +405,155 @@ Pinned: {meta.get("is_pinned")}
 
 """
 
-    print("QUESTION:", question)
-    print("CONTEXT:", context)
 
-    answer = ask_notes(question, context)
-
-    print("ANSWER:", answer)
+    answer = ask_notes(
+        question=question,
+        context=context,
+        username=request.user.first_name or request.user.username,
+        is_demo=request.user.username == "demo"
+    )
 
     return JsonResponse({
         "answer": answer
     })
+
+def demo_login(request):
+
+    user = User.objects.get(username="demo")
+
+    for note in Note.objects.filter(user=user):
+
+        collection.delete(ids=[str(note.id)])
+
+    Note.objects.filter(user=user).delete()
+
+    demo_notes = [
+        {
+            "title": "Python Basics",
+            "category": "Programming",
+            "content": "Python is an interpreted, high-level programming language. It supports OOP, functions, modules and packages."
+        },
+        {
+            "title": "Django Models",
+            "category": "Programming",
+            "content": "Django models represent database tables. Each model maps to one database table."
+        },
+        {
+            "title": "Docker Commands",
+            "category": "Technology",
+            "content": "docker build builds images. docker run starts containers. docker compose manages multi-container apps."
+        },
+        {
+            "title": "Workout Routine",
+            "category": "Health & Fitness",
+            "content": "Monday: Chest and Triceps. Tuesday: Back and Biceps. Wednesday: Legs."
+        },
+        {
+            "title": "Healthy Diet",
+            "category": "Health & Fitness",
+            "content": "Eat enough protein, vegetables, fruits and drink plenty of water."
+        }
+    ]
+
+    for item in demo_notes:
+
+        category, _ = Category.objects.get_or_create(
+            user=user,
+            name=item["category"]
+        )
+
+        note = Note.objects.create(
+            user=user,
+            title=item["title"],
+            content=item["content"],
+            category=category,
+            summary="",
+            tags="",
+            ai_generated=False,
+            embedding_status=True
+        )
+
+        save_to_chroma(note)
+
+    login(request, user)
+
+    request.session["is_demo"] = True
+
+    return redirect("workspace")
+
+@login_required
+def profile(request):
+
+    profile, _ = Profile.objects.get_or_create(
+    user=request.user
+    )
+
+    notes = Note.objects.filter(user=request.user)
+
+    context = {
+
+        "profile": profile,
+
+        "total_notes": notes.count(),
+
+        "ai_notes": notes.filter(ai_generated=True).count(),
+
+        "manual_notes": notes.filter(ai_generated=False).count(),
+
+        "pinned_notes": notes.filter(is_pinned=True).count(),
+
+        "categories": (
+            Category.objects
+            .filter(user=request.user)
+            .annotate(note_count=Count("note"))
+            .filter(note_count__gt=0)
+            .count()
+        )
+
+    }
+
+    return render(
+        request,
+        "notes/profile.html",
+        context
+    )
+
+
+@login_required
+def edit_profile(request):
+
+    profile, _ = Profile.objects.get_or_create(
+    user=request.user
+    )
+
+    if request.method == "POST":
+
+        form = ProfileForm(
+            request.POST,
+            instance=profile
+        )
+
+        if form.is_valid():
+
+            form.save()
+
+            messages.success(
+                request,
+                "Profile updated successfully."
+            )
+
+            return redirect("profile")
+
+    else:
+
+        form = ProfileForm(
+            instance=profile
+        )
+
+    return render(
+        request,
+        "notes/edit_profile.html",
+        {
+            "form": form
+        }
+    )
