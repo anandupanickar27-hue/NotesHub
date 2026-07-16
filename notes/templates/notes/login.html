@@ -1,4 +1,5 @@
 {% extends "notes/base.html" %}
+{% load static %}
 
 {% block content %}
 
@@ -6,7 +7,10 @@
 
     <div class="auth-card">
 
-        <div class="auth-logo"></div>
+        <img
+            src="{% static 'images/gofi-logo.svg' %}"
+            alt="GoFi Logo"
+            class="auth-logo">
 
         <h1>Welcome Back</h1>
 

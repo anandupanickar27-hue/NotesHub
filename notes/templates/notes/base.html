@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}GoFi{% endblock %}</title>
 
-    <link rel="icon" href="{% static 'images/logo.png' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/gofi-logo.svg' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -34,7 +34,10 @@
 
         <a class="navbar-brand d-flex align-items-center" href="{% url 'workspace' %}">
 
-            <div class="logo-placeholder"></div>
+            <img
+                src="{% static 'images/gofi-logo.svg' %}"
+                alt="GoFi Logo"
+                class="logo">
 
             <span class="ms-3">GoFi</span>
 
