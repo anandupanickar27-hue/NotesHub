@@ -88,7 +88,6 @@ Standalone Query:
 
     except Exception as e:
 
-        print("Rewrite error:", e)
 
         # Fall back to the original question
         return question

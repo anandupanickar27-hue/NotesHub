@@ -4,13 +4,23 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "noteshub.settings")
 django.setup()
 
+
 from django.contrib.auth.models import User
 from notes.models import Category, Note
 from notes.vector_store import save_to_chroma, collection
 from datetime import datetime, timedelta
 from django.utils import timezone
 
-user = User.objects.get(username="demo")
+user, created = User.objects.get_or_create(
+    username="demo",
+    defaults={
+        "first_name": "Demo",
+        "email": "demo@gofi.ai",
+    },
+)
+
+user.set_password("demo123")
+user.save()
 
 demo_notes = Note.objects.filter(user=user)
 
@@ -78,11 +88,13 @@ notes = [
 
 ]
 
+
 base_date = timezone.make_aware(
     datetime(2026, 7, 1, 9, 0)
 )
 
-for i, (title, category_name, content) in enumerate(notes):
+for i, (title, category_name, content) in enumerate(notes, start=1):
+
 
     category, _ = Category.objects.get_or_create(
         user=user,
@@ -96,12 +108,22 @@ for i, (title, category_name, content) in enumerate(notes):
         content=content,
         summary="",
         tags="",
-        ai_generated=False
+        ai_generated=False,
+        embedding_status=True
     )
 
-    note.created_at = base_date + timedelta(days=i)
-    note.save(update_fields=["created_at"])
+    # Static demo dates
+    Note.objects.filter(pk=note.pk).update(
+        created_at=base_date + timedelta(days=i),
+        updated_at=base_date + timedelta(days=i)
+    )
 
-    save_to_chroma(note)
+    note.refresh_from_db()
 
-print(f"{len(notes)} demo notes created successfully.")
+    try:
+        save_to_chroma(note)
+
+    except Exception as e:
+        print(f"✗ Chroma Error: {e}")
+
+print(f"\n✅ {len(notes)} demo notes created successfully.")
