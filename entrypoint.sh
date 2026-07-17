@@ -1,8 +1,8 @@
 #!/bin/sh
 
-echo "Waiting for MySQL..."
+echo "Waiting for database connection..."
 
-sleep 10
+sleep 5
 
 echo "Running migrations..."
 python manage.py migrate --noinput
