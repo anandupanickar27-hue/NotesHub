@@ -11,30 +11,17 @@ llm = ChatGoogleGenerativeAI(
 import json
 
 def process_note(content):
-
     prompt = f"""
-    You are an AI assistant.
-
-    Analyze the following note and return ONLY valid JSON.
-
-    {{
-      "title": "...",
-      "category": "...",
-      "summary": "...",
-      "tags": ["...", "...", "..."]
-    }}
-
-    Note:
-    {content}
-
-    Do not return markdown.
-    Do not use ```json.
-    Return only JSON.
+    ...
     """
 
-    response = llm.invoke(prompt)
+    try:
+        response = llm.invoke(prompt)
+        return json.loads(response.content)
 
-    return json.loads(response.content)
+    except Exception as e:
+        print("PROCESS_NOTE ERROR:", repr(e))
+        raise
 
 def rewrite_query(question, history):
 
@@ -88,9 +75,7 @@ Standalone Query:
         return response.content.strip()
 
     except Exception as e:
-
-
-        # Fall back to the original question
+        print("REWRITE ERROR:", repr(e))
         return question
 
 
@@ -253,6 +238,7 @@ Answer:
 
         return response.content.strip()
 
-    except Exception:
+    except Exception as e:
 
-        return "Sorry, I couldn't process your request right now. Please try again."
+        print("ASK_NOTES ERROR:", repr(e))
+        raise
