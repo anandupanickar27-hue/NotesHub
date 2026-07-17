@@ -19,9 +19,10 @@ user, created = User.objects.get_or_create(
     },
 )
 
-user.set_password("demo123")
-user.save()
-
+if created:
+    user.set_password("demo123")
+    user.save()
+    
 demo_notes = Note.objects.filter(user=user)
 
 for note in demo_notes:
