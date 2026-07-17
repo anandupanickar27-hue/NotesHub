@@ -10,6 +10,9 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "Rebuilding seed_demo"
+python seed_demo.py
+
 echo "Rebuilding ChromaDB..."
 python manage.py rebuild_chroma
 
