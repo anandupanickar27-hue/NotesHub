@@ -35,6 +35,7 @@ def process_note(content):
     response = llm.invoke(prompt)
 
     return json.loads(response.content)
+
 def rewrite_query(question, history):
 
     if not history:
