@@ -10,6 +10,9 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "Rebuilding ChromaDB..."
+python manage.py rebuild_chroma
+
 echo "Starting Gunicorn..."
 
 exec gunicorn noteshub.wsgi:application \
