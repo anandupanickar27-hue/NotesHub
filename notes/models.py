@@ -25,6 +25,7 @@ class Note(models.Model):
     tags = models.CharField(max_length=255, blank=True)
     ai_generated = models.BooleanField(default=False)
     embedding_status = models.BooleanField(default=False)
+    is_seed = models.BooleanField(default=False)
     def __str__(self):
         return self.title
     

@@ -102,15 +102,16 @@ for i, (title, category_name, content) in enumerate(notes, start=1):
     )
 
     note = Note.objects.create(
-        user=user,
-        title=title,
-        category=category,
-        content=content,
-        summary="",
-        tags="",
-        ai_generated=False,
-        embedding_status=True
-    )
+    user=user,
+    title=title,
+    category=category,
+    content=content,
+    summary="",
+    tags="",
+    ai_generated=False,
+    embedding_status=True,
+    is_seed=True
+)
 
     # Static demo dates
     Note.objects.filter(pk=note.pk).update(

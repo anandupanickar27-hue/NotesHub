@@ -168,27 +168,34 @@ def notes_list(request):
 
     })
 
+
 def logout_view(request):
+
     if request.session.get("is_demo"):
 
-    
-
         demo_notes = Note.objects.filter(
-            user=request.user
+            user=request.user,
+            is_seed=False
         )
 
         for note in demo_notes:
 
-            collection.delete(
-                ids=[str(note.id)]
-            )
+            try:
+                collection.delete(
+                    ids=[str(note.id)]
+                )
+
+            except Exception:
+                pass
 
         demo_notes.delete()
 
         request.session.pop("is_demo", None)
 
     request.session.pop("chat_history", None)
+
     logout(request)
+
     return redirect("login")
 
 
