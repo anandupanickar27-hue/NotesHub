@@ -1,5 +1,8 @@
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAIError
+import json
+from json import JSONDecodeError
 
 load_dotenv()
 
@@ -8,16 +11,70 @@ llm = ChatGoogleGenerativeAI(
 )
 
 
-import json
-
 def process_note(content):
+
     prompt = f"""
-    ...
+    You are an AI assistant.
+
+    Analyze the following note and return ONLY valid JSON.
+
+    {{
+      "title": "...",
+      "category": "...",
+      "summary": "...",
+      "tags": ["...", "...", "..."]
+    }}
+
+    Note:
+    {content}
+
+    Do not return markdown.
+    Do not use ```json.
+    Return only JSON.
     """
 
     try:
         response = llm.invoke(prompt)
-        return json.loads(response.content)
+
+        # Print Gemini's raw response for debugging
+        print("========== GEMINI RAW RESPONSE ==========")
+        print(response.content)
+        print("=========================================")
+
+        raw_response = response.content.strip()
+
+        # Remove markdown if Gemini returns it
+        if raw_response.startswith("```json"):
+            raw_response = raw_response.replace("```json", "", 1)
+
+        if raw_response.startswith("```"):
+            raw_response = raw_response.replace("```", "", 1)
+
+        if raw_response.endswith("```"):
+            raw_response = raw_response[:-3]
+
+        raw_response = raw_response.strip()
+
+        return json.loads(raw_response)
+
+    except JSONDecodeError as e:
+        print("JSON PARSE ERROR:", repr(e))
+        print("RAW RESPONSE:", response.content)
+        raise Exception(
+            "AI returned an invalid response. Please try again."
+        )
+
+    except ChatGoogleGenerativeAIError as e:
+        print("GEMINI API ERROR:", repr(e))
+
+        if "RESOURCE_EXHAUSTED" in str(e):
+            raise Exception(
+                "GoFi AI has reached its current usage limit. Please try again later."
+            )
+
+        raise Exception(
+            "Unable to connect to the AI service. Please try again later."
+        )
 
     except Exception as e:
         print("PROCESS_NOTE ERROR:", repr(e))
@@ -75,7 +132,6 @@ Standalone Query:
         return response.content.strip()
 
     except Exception as e:
-        print("REWRITE ERROR:", repr(e))
         return question
 
 
@@ -238,7 +294,20 @@ Answer:
 
         return response.content.strip()
 
-    except Exception as e:
+    except ChatGoogleGenerativeAIError as e:
 
-        print("ASK_NOTES ERROR:", repr(e))
-        raise
+        if "RESOURCE_EXHAUSTED" in str(e):
+            return (
+                "⚠️ GoFi AI has reached its current usage limit. "
+                "Please try again later."
+            )
+
+        return (
+            "⚠️ Unable to connect to the AI service. "
+            "Please try again later."
+        )
+
+    except Exception:
+        return (
+            "⚠️ Something went wrong while processing your request."
+        )

@@ -276,9 +276,24 @@ def generate_title_ai(request):
 
         content = request.POST.get("content")
 
-        result = process_note(content)
+        try:
+            result = process_note(content)
+            return JsonResponse(result)
 
-        return JsonResponse(result)
+        except Exception as e:
+            return JsonResponse(
+                {
+                    "error": str(e)
+                },
+                status=400
+            )
+
+    return JsonResponse(
+        {
+            "error": "Invalid request."
+        },
+        status=405
+    )
 
 
 @login_required
