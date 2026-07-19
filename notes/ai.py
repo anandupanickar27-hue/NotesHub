@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import ChatGoogleGenerativeAIError
 import json
 from json import JSONDecodeError
 
@@ -64,7 +63,7 @@ def process_note(content):
             "AI returned an invalid response. Please try again."
         )
 
-    except ChatGoogleGenerativeAIError as e:
+    except Exception as e:
         print("GEMINI API ERROR:", repr(e))
 
         if "RESOURCE_EXHAUSTED" in str(e):
