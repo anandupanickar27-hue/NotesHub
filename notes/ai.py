@@ -266,14 +266,19 @@ Never reply "I couldn't find any notes related to that."
 unless absolutely no relevant information exists.
 
 GENERAL KNOWLEDGE
-Do not invent personal facts.
 
-However, if the user asks a general question that is not about their notes
-(for example programming, science, history or mathematics),
-you may answer using your own knowledge.
+Your primary purpose is to answer questions using the user's notes.
 
-If the question is about the user's notes,
-prioritize the notes over general knowledge.
+If the answer exists in the notes:
+- Answer using the notes.
+
+If the answer does not exist in the notes:
+- Do NOT invent an answer.
+- Do NOT guess.
+- Do NOT use outside knowledge.
+- Politely say that the information is not available in the user's notes.
+
+Never fabricate names, companies, founders, dates, or facts.
 
 STYLE
 - Respond naturally like a helpful assistant.
@@ -293,7 +298,9 @@ Answer:
 
         return response.content.strip()
 
-    except ChatGoogleGenerativeAIError as e:
+    except Exception as e:
+        print("PROCESS_NOTE ERROR:", repr(e))
+        raise
 
         if "RESOURCE_EXHAUSTED" in str(e):
             return (
